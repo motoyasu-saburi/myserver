@@ -8,9 +8,8 @@ import (
   "strconv"
   "bufio"
   "os"
+  // "runtime"
 )
-
-
 
 func main() {
   listener, err := net.Listen("tcp", "localhost:8080")
@@ -19,42 +18,49 @@ func main() {
     return
   }
   defer listener.Close()
-  conn, err := listener.Accept()
-  if err != nil {
-    fmt.Printf("Accept error: %s\n", err)
-    return
+
+  // var inputKeyFlag bool = false
+  for ;; {
+    // println("hofgeeeeeeeeeeeee")
+    // go inputKey()
+
+    conn, err := listener.Accept()
+    if err != nil {
+      fmt.Printf("Accept error: %s\n", err)
+      return
+    }
+    defer conn.Close()
+
+    status, err := bufio.NewReader(conn).ReadString('\n')
+    if err != nil {
+      fmt.Printf("bufIO err: %s\n", err)
+      return
+    }
+    //1: method, 2: パス, 3: httpのバージョン
+    splitedStatus := strings.Split(status, " ")
+    path := splitedStatus[1]
+    if(path == "/") {
+      path = "/index.html"
+    }
+    messageBody := readFileContent(path)
+
+  	res := GenerateHttpHeader(messageBody)
+    res += messageBody + "\n"
+
+  	conn.Write([]byte(res))
+
+  	buf := make([]byte, 1024)
+  	for {
+  		n, err := conn.Read(buf)
+  		if n == 0 {
+  			break
+  		}
+  		if err != nil {
+  			fmt.Printf("Read error: %s\n", err)
+  		}
+  		fmt.Print(string(buf[:n]))
+  	}
   }
-  defer conn.Close()
-
-  status, err := bufio.NewReader(conn).ReadString('\n')
-  if err != nil {
-    fmt.Printf("bufIO err: %s\n", err)
-    return
-  }
-  //1: method, 2: パス, 3: httpのバージョン
-  splitedStatus := strings.Split(status, " ")
-  path := splitedStatus[1]
-  if(path == "/") {
-    path = "/index.html"
-  }
-  messageBody := readFileContent(path)
-
-	res := GenerateHttpHeader(messageBody)
-  res += messageBody + "\n"
-
-	conn.Write([]byte(res))
-
-	buf := make([]byte, 1024)
-	for {
-		n, err := conn.Read(buf)
-		if n == 0 {
-			break
-		}
-		if err != nil {
-			fmt.Printf("Read error: %s\n", err)
-		}
-		fmt.Print(string(buf[:n]))
-	}
 }
 
 func readFileContent(fileName string) string {
@@ -70,7 +76,19 @@ func readFileContent(fileName string) string {
   return body
 }
 
-func CountByteLength(target string)(int) {
+// func inputKey() bool {
+//   runtime.Gosched()
+//   println("input _ 1")
+//   var key string
+//   fmt.Scan(&key)
+//   println("input _ 2")
+//   if (key == "q") {
+//     break
+//   }
+//   return
+// }
+
+func CountByteLength(target string) int {
   return utf8.RuneCountInString(target)
 }
 
