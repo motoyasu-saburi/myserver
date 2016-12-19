@@ -18,10 +18,8 @@ func main() {
     return
   }
   defer listener.Close()
-
   //パッケージ内変数のようにする案
-  var inputKeyFlag bool = false
-
+  // var inputKeyFlag bool = false
   for ;; {
     //TODO 返り値が戻ってこないのでは？調査
     // inputKeyFlag = go inputKey()
@@ -30,17 +28,12 @@ func main() {
     // }
 
     conn, err := listener.Accept()
-    if err != nil {
-      fmt.Printf("Accept error: %s\n", err)
-      return
-    }
+    CheckError(err)
     defer conn.Close()
 
     status, err := bufio.NewReader(conn).ReadString('\n')
-    if err != nil {
-      fmt.Printf("bufIO err: %s\n", err)
-      return
-    }
+    CheckError(err)
+
     //1: method, 2: パス, 3: httpのバージョン
     splitedStatus := strings.Split(status, " ")
     path := splitedStatus[1]
@@ -60,9 +53,10 @@ func main() {
   		if n == 0 {
   			break
   		}
-  		if err != nil {
-  			fmt.Printf("Read error: %s\n", err)
-  		}
+      if err != nil {
+        fmt.Printf("error: %s\n", err)
+        return
+      }
   		fmt.Print(string(buf[:n]))
   	}
   }
@@ -92,11 +86,18 @@ func CountByteLength(target string) int {
   return utf8.RuneCountInString(target)
 }
 
+func CheckError(err error) {
+  if err != nil {
+    fmt.Printf("error: %s\n", err)
+    return
+  }
+}
+
 func GenerateHttpHeader(messageBody string) string {
   responseStatus := "HTTP/1.1 200 OK\n"
   contentType    := "Content-Type: text/html; charset=utf-8;"
   serverName     := "Server: goserver\n"
   contentLength  := "Content-Length: " + strconv.Itoa(CountByteLength(messageBody) + 1) + "\n"
 
-  return responseStatus + contentType + charset + serverName + contentLength + "\n"
+  return responseStatus + contentType + serverName + contentLength + "\n"
 }
