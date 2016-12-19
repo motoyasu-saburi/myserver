@@ -19,10 +19,15 @@ func main() {
   }
   defer listener.Close()
 
-  // var inputKeyFlag bool = false
+  //パッケージ内変数のようにする案
+  var inputKeyFlag bool = false
+
   for ;; {
-    // println("hofgeeeeeeeeeeeee")
-    // go inputKey()
+    //TODO 返り値が戻ってこないのでは？調査
+    // inputKeyFlag = go inputKey()
+    // if(inputKeyFlag) {
+    //   break
+    // }
 
     conn, err := listener.Accept()
     if err != nil {
@@ -78,14 +83,9 @@ func readFileContent(fileName string) string {
 
 // func inputKey() bool {
 //   runtime.Gosched()
-//   println("input _ 1")
 //   var key string
 //   fmt.Scan(&key)
-//   println("input _ 2")
-//   if (key == "q") {
-//     break
-//   }
-//   return
+//   return (key == "q")
 // }
 
 func CountByteLength(target string) int {
@@ -94,8 +94,7 @@ func CountByteLength(target string) int {
 
 func GenerateHttpHeader(messageBody string) string {
   responseStatus := "HTTP/1.1 200 OK\n"
-  contentType    := "Content-Type: text/html\n"
-  charset        := "charset=utf-8\n";
+  contentType    := "Content-Type: text/html; charset=utf-8;"
   serverName     := "Server: goserver\n"
   contentLength  := "Content-Length: " + strconv.Itoa(CountByteLength(messageBody) + 1) + "\n"
 
