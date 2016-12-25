@@ -33,7 +33,6 @@ func main() {
 
     status, err := bufio.NewReader(conn).ReadString('\n')
     CheckError(err)
-
     //1: method, 2: パス, 3: httpのバージョン
     splitedStatus := strings.Split(status, " ")
     path := splitedStatus[1]
@@ -41,24 +40,28 @@ func main() {
       path = "/index.html"
     }
     messageBody := readFileContent(path)
+    extensionPosition := strings.LastIndex(path, ".")
+    extension := "html"
+    if(extensionPosition > 0) {
+      extension = path[extensionPosition +1 :] // ex: "jpg", "png", "html"
+    }
 
-  	res := GenerateHttpHeader(messageBody)
+  	res := GenerateHttpHeader(messageBody, extension)
     res += messageBody + "\n"
-
   	conn.Write([]byte(res))
 
-  	buf := make([]byte, 1024)
-  	for {
-  		n, err := conn.Read(buf)
-  		if n == 0 {
-  			break
-  		}
-      if err != nil {
-        fmt.Printf("error: %s\n", err)
-        return
-      }
-  		fmt.Print(string(buf[:n]))
-  	}
+    // buf := make([]byte, 1024)
+  	// for {
+  	// 	n, err := conn.Read(buf)
+  	// 	if n == 0 {
+  	// 		break
+  	// 	}
+    //   if err != nil {
+    //     fmt.Printf("error: %s\n", err)
+    //     return
+    //   }
+  	// 	fmt.Print(string(buf[:n]))
+  	// }
   }
 }
 
@@ -93,11 +96,19 @@ func CheckError(err error) {
   }
 }
 
-func GenerateHttpHeader(messageBody string) string {
+func SelectContentType(extension string) string {
+  switch extension {
+  case "html", "HTML": return "text/html; charset=utf-8;\n"
+  case "png", "PNG": return "image/png;\n"
+  case "jpeg", "JPEG", "jpg", "JPG": return "image/jpeg;\n"
+  default: return ";\n"
+  }
+}
+
+func GenerateHttpHeader(messageBody string, fileExtension string) string {
   responseStatus := "HTTP/1.1 200 OK\n"
-  contentType    := "Content-Type: text/html; charset=utf-8;"
+  contentType    := "Content-Type: " + SelectContentType(fileExtension)
   serverName     := "Server: goserver\n"
   contentLength  := "Content-Length: " + strconv.Itoa(CountByteLength(messageBody) + 1) + "\n"
-
   return responseStatus + contentType + serverName + contentLength + "\n"
 }
