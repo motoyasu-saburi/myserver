@@ -7,11 +7,14 @@ import (
   "unicode/utf8"
   "strconv"
   "bufio"
-  "os"
+  // "os"
+  "io/ioutil"
   // "runtime"
 )
 
 func main() {
+  println("start go http server!")
+
   listener, err := net.Listen("tcp", "localhost:8080")
   if err != nil {
     fmt.Printf("Listen error: %s\n", err)
@@ -20,6 +23,10 @@ func main() {
   defer listener.Close()
   //パッケージ内変数のようにする案
   // var inputKeyFlag bool = false
+  /**
+   * TODO １リクエストあたりの処理を別スレッドに分けないとリクエストをさばけない
+   * （複数リクエストが混じるリクエスト） ex: html内にあるimageの読み込み
+   */
   for ;; {
     //TODO 返り値が戻ってこないのでは？調査
     // inputKeyFlag = go inputKey()
@@ -33,49 +40,29 @@ func main() {
 
     status, err := bufio.NewReader(conn).ReadString('\n')
     CheckError(err)
-    //1: method, 2: パス, 3: httpのバージョン
+    //0: method, 1: パス, 2: httpのバージョン
     splitedStatus := strings.Split(status, " ")
     path := splitedStatus[1]
     if(path == "/") {
       path = "/index.html"
     }
+    //TODO Body生成部分に切り分けたい
     messageBody := readFileContent(path)
-    extensionPosition := strings.LastIndex(path, ".")
-    extension := "html"
-    if(extensionPosition > 0) {
-      extension = path[extensionPosition +1 :] // ex: "jpg", "png", "html"
-    }
-
+    extension := getExtension(path)
   	res := GenerateHttpHeader(messageBody, extension)
     res += messageBody + "\n"
   	conn.Write([]byte(res))
-
-    // buf := make([]byte, 1024)
-  	// for {
-  	// 	n, err := conn.Read(buf)
-  	// 	if n == 0 {
-  	// 		break
-  	// 	}
-    //   if err != nil {
-    //     fmt.Printf("error: %s\n", err)
-    //     return
-    //   }
-  	// 	fmt.Print(string(buf[:n]))
-  	// }
   }
 }
 
 func readFileContent(fileName string) string {
-  fp, err := os.Open("./resources" + fileName)
+  //TODO どでかいファイル入ると多分落ちる。
+  fp, err := ioutil.ReadFile("./resources" + fileName)
   if err != nil {
     return "Not Found!"
   }
-  scanner := bufio.NewScanner(fp)
-  body := ""
-  for scanner.Scan() {
-    body += scanner.Text()
-  }
-  return body
+  body := fp
+  return string(body)
 }
 
 // func inputKey() bool {
@@ -96,19 +83,33 @@ func CheckError(err error) {
   }
 }
 
+func getExtension(urlPath string) string {
+  extensionPosition := strings.LastIndex(urlPath, ".")
+  extension := "html"
+  if(extensionPosition > 0) {
+    extension = urlPath[extensionPosition +1 :] // ex: "jpg", "png", "html"
+  }
+  return extension
+}
+
 func SelectContentType(extension string) string {
+  //TODO 将来的には画像に関しては先端のバイトコードを見て適切なContentTypeを送信したい。
   switch extension {
   case "html", "HTML": return "text/html; charset=utf-8;\n"
   case "png", "PNG": return "image/png;\n"
   case "jpeg", "JPEG", "jpg", "JPG": return "image/jpeg;\n"
+  // case "txt", "TXT", "text", "TEXT": return "plain/text;\n"
   default: return ";\n"
   }
 }
 
 func GenerateHttpHeader(messageBody string, fileExtension string) string {
+  //TODO 適切なResponseのStatsを返せるようにしたい。
   responseStatus := "HTTP/1.1 200 OK\n"
   contentType    := "Content-Type: " + SelectContentType(fileExtension)
   serverName     := "Server: goserver\n"
+  //TODO contentLengthがUTF8のみで行われているため、適切な長さを返せない場合がある。
+  // contentLength := "Content-Length: 41276\n"
   contentLength  := "Content-Length: " + strconv.Itoa(CountByteLength(messageBody) + 1) + "\n"
   return responseStatus + contentType + serverName + contentLength + "\n"
 }
