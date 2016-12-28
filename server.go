@@ -8,6 +8,7 @@ import (
   "strconv"
   "bufio"
   // "os"
+  "time"
   "io/ioutil"
   // "runtime"
 )
@@ -28,31 +29,35 @@ func main() {
    * （複数リクエストが混じるリクエスト） ex: html内にあるimageの読み込み
    */
   for ;; {
-    //TODO 返り値が戻ってこないのでは？調査
-    // inputKeyFlag = go inputKey()
-    // if(inputKeyFlag) {
-    //   break
-    // }
-
     conn, err := listener.Accept()
     CheckError(err)
-    defer conn.Close()
-
-    status, err := bufio.NewReader(conn).ReadString('\n')
-    CheckError(err)
-    //0: method, 1: パス, 2: httpのバージョン
-    splitedStatus := strings.Split(status, " ")
-    path := splitedStatus[1]
-    if(path == "/") {
-      path = "/index.html"
-    }
-    //TODO Body生成部分に切り分けたい
-    messageBody := readFileContent(path)
-    extension := getExtension(path)
-  	res := GenerateHttpHeader(messageBody, extension)
-    res += messageBody + "\n"
-  	conn.Write([]byte(res))
+    conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+    go doServer(conn)
   }
+}
+
+func doServer(conn net.Conn) {
+  // TODO 返り値が戻ってこないのでは？調査
+  // inputKeyFlag = go inputKey()
+  // if(inputKeyFlag) {
+  //   break
+  // }
+
+  status, err := bufio.NewReader(conn).ReadString('\n')
+  CheckError(err)
+  //0: method, 1: パス, 2: httpのバージョン
+  splitedStatus := strings.Split(status, " ")
+  path := splitedStatus[1]
+  if(path == "/") {
+    path = "/index.html"
+  }
+  //TODO Body生成部分に切り分けたい
+  messageBody := readFileContent(path)
+  extension := getExtension(path)
+  res := GenerateHttpHeader(messageBody, extension)
+  res += messageBody + "\n"
+  conn.Write([]byte(res))
+  defer conn.Close()
 }
 
 func readFileContent(fileName string) string {
@@ -109,7 +114,6 @@ func GenerateHttpHeader(messageBody string, fileExtension string) string {
   contentType    := "Content-Type: " + SelectContentType(fileExtension)
   serverName     := "Server: goserver\n"
   //TODO contentLengthがUTF8のみで行われているため、適切な長さを返せない場合がある。
-  // contentLength := "Content-Length: 41276\n"
   contentLength  := "Content-Length: " + strconv.Itoa(CountByteLength(messageBody) + 1) + "\n"
   return responseStatus + contentType + serverName + contentLength + "\n"
 }
