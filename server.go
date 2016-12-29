@@ -7,10 +7,10 @@ import (
   "unicode/utf8"
   "strconv"
   "bufio"
-  // "os"
+  "io"
   "time"
   "io/ioutil"
-  // "runtime"
+  "regexp"
 )
 
 func main() {
@@ -43,10 +43,26 @@ func doServer(conn net.Conn) {
   //   break
   // }
 
-  status, err := bufio.NewReader(conn).ReadString('\n')
+  reader := bufio.NewReader(conn)
+  status, err := reader.ReadString('\n')
   CheckError(err)
   //0: method, 1: パス, 2: httpのバージョン
   splitedStatus := strings.Split(status, " ")
+  if(splitedStatus[0] == "POST") {
+    //TODO ここで適切 Content-Lengthを取得し、ボディ部でその分だけ読み込み処理
+    repContentLength := regexp.MustCompile(`^Content-Length`)
+    for line := ""; err == nil; line, err = reader.ReadString('\n') {
+      if(repContentLength.MatchString(line)) {
+        repLength := regexp.MustCompile(`\b[0-9]+\b`)
+        contentLength, err := strconv.Atoi(repLength.FindString(line))
+        CheckError(err)
+        println(contentLength)
+      }
+    }
+    if err != io.EOF {
+      panic(err)
+    }
+  }
   path := splitedStatus[1]
   if(path == "/") {
     path = "/index.html"
@@ -95,6 +111,14 @@ func getExtension(urlPath string) string {
     extension = urlPath[extensionPosition +1 :] // ex: "jpg", "png", "html"
   }
   return extension
+}
+
+func PostParameterParser(param string) {
+
+}
+
+func JsonParser() {
+
 }
 
 func SelectContentType(extension string) string {
