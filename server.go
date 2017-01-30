@@ -42,7 +42,6 @@ func doServer(conn net.Conn) {
   // if(inputKeyFlag) {
   //   break
   // }
-
   reader := bufio.NewReader(conn)
   status, err := reader.ReadString('\n')
   CheckError(err)
