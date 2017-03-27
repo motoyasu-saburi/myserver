@@ -23,21 +23,17 @@ func main() {
   }
   defer listener.Close()
   //パッケージ内変数のようにする案
-  // var inputKeyFlag bool = false
-  /**
-   * TODO １リクエストあたりの処理を別スレッドに分けないとリクエストをさばけない
-   * （複数リクエストが混じるリクエスト） ex: html内にあるimageの読み込み
-   */
   for ;; {
     conn, err := listener.Accept()
     CheckError(err)
+    //TimeOut処理
     conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
     go doServer(conn)
   }
 }
 
 func doServer(conn net.Conn) {
-  // TODO 返り値が戻ってこないのでは？調査
+  // TODO キー入力で終了させたい。
   // inputKeyFlag = go inputKey()
   // if(inputKeyFlag) {
   //   break
@@ -66,34 +62,31 @@ func doServer(conn net.Conn) {
         CheckError(err)
       }
       //HTTPのボディ部の処理
+      //TODO ここでPOST処理を作成。まずはHTTP Bodyをパースしていく
       messageBodyFlag = repPartition.MatchString(string(line))
+      //TODO POST, GETを大きく分離したい
       if(messageBodyFlag) {
         //bodyの読み取り処理
         var readBodyLength = 0;
         var bodyString = ""
         var i = 0
-        println("First ---------------------")
         for ; i < contentLength; i++ {
-          println("@@@@@@@@@@@@@@@@@@@@@@@@@")
           line, _, err := reader.ReadLine()
-          println("@@@@@@@@@@@@@@@@@@@@@@@@@")
           readBodyLength += len(string(line))
           bodyString += string(line)
           if (readBodyLength >= contentLength || err == io.EOF) {
-            println("readBody is")
             println(readBodyLength)
-            println("contentLength is")
             println(contentLength)
-            println("break 1")
             break
           }
         }
         println(bodyString)
-        println("break 2")
         break
       }
     }
   }
+  //TODO 内部ディレクトリ指定 && ファイル名の指定がない場合に、index.htmlが見れない
+  //TODO ファイルがない場合にフォルダ内のListを生成したい。
   path := splitedStatus[1]
   if(path == "/") {
     path = "/index.html"
@@ -107,6 +100,7 @@ func doServer(conn net.Conn) {
   defer conn.Close()
 }
 
+// リクエストで返すための読み込みファイルの内容を返す
 func readFileContent(fileName string) string {
   //TODO どでかいファイル入ると多分落ちる。
   fp, err := ioutil.ReadFile("./resources" + fileName)
@@ -117,17 +111,13 @@ func readFileContent(fileName string) string {
   return string(body)
 }
 
-// func inputKey() bool {
-//   runtime.Gosched()
-//   var key string
-//   fmt.Scan(&key)
-//   return (key == "q")
-// }
-
+// 対象文字列をカウントをする
 func CountByteLength(target string) int {
+  //TODO UTF8しかできないのはまずい
   return utf8.RuneCountInString(target)
 }
 
+//汎用のエラー処理
 func CheckError(err error) {
   if err != nil {
     fmt.Printf("error: %s\n", err)
@@ -135,6 +125,7 @@ func CheckError(err error) {
   }
 }
 
+// URLのパスから対象ファイルの拡張子を取得する
 func getExtension(urlPath string) string {
   extensionPosition := strings.LastIndex(urlPath, ".")
   extension := "html"
@@ -168,8 +159,8 @@ func GenerateHttpHeader(messageBody string, fileExtension string) string {
   responseStatus := "HTTP/1.1 200 OK\n"
   contentType    := "Content-Type: " + SelectContentType(fileExtension)
   serverName     := "Server: goserver\n"
-  keepAlive := "Connection: Keep-Alive\n"
+  //TODO Keep-Alive
   //TODO contentLengthがUTF8のみで行われているため、適切な長さを返せない場合がある。
   contentLength  := "Content-Length: " + strconv.Itoa(CountByteLength(messageBody) + 1) + "\n"
-  return responseStatus + contentType + keepAlive + serverName + contentLength + "\n"
+  return responseStatus + contentType + serverName + contentLength + "\n"
 }
