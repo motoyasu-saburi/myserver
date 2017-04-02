@@ -73,11 +73,8 @@ func doServer(conn net.Conn) {
         var readBodyLength = 0;
         var bodyString = ""
         var i = 0
-        println("First ---------------------")
         for ; i < contentLength; i++ {
-          println("@@@@@@@@@@@@@@@@@@@@@@@@@")
           line, _, err := reader.ReadLine()
-          println("@@@@@@@@@@@@@@@@@@@@@@@@@")
           readBodyLength += len(string(line))
           bodyString += string(line)
           if (readBodyLength >= contentLength || err == io.EOF) {
@@ -96,8 +93,8 @@ func doServer(conn net.Conn) {
     }
   }
   path := splitedStatus[1]
-  if(path == "/") {
-    path = "/index.html"
+  if( getExtension(path) == "" ) {
+    // path += "/index.html"
   }
   //TODO Body生成部分に切り分けたい
   messageBody := readFileContent(path)
@@ -112,7 +109,11 @@ func readFileContent(fileName string) string {
   //TODO どでかいファイル入ると多分落ちる。
   fp, err := ioutil.ReadFile("./resources" + fileName)
   if err != nil {
-    return "Not Found!"
+    filesList := getFilesList("./resources/" + fileName)
+    if(filesList == "") {
+      return "Not Found!"
+    }
+    return filesList
   }
   body := fp
   return string(body)
@@ -129,6 +130,18 @@ func CountByteLength(target string) int {
   return utf8.RuneCountInString(target)
 }
 
+func getFilesList(dirPath string) string {
+  fileInfo, err := ioutil.ReadDir(dirPath)
+  var result = ""
+  CheckError(err)
+  for _, fileInfo := range fileInfo {
+    // *FileInfo型
+    var findName = (fileInfo).Name()
+    result += findName + "\n"
+  }
+  return result
+}
+
 func CheckError(err error) {
   if err != nil {
     fmt.Printf("error: %s\n", err)
@@ -138,7 +151,7 @@ func CheckError(err error) {
 
 func getExtension(urlPath string) string {
   extensionPosition := strings.LastIndex(urlPath, ".")
-  extension := "html"
+  extension := ""
   if(extensionPosition > 0) {
     extension = urlPath[extensionPosition +1 :] // ex: "jpg", "png", "html"
   }
