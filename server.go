@@ -11,6 +11,7 @@ import (
   "time"
   "io/ioutil"
   "regexp"
+  "os"
 )
 
 func main() {
@@ -77,16 +78,9 @@ func doServer(conn net.Conn) {
           readBodyLength += len(string(line))
           bodyString += string(line)
           if (readBodyLength >= contentLength || err == io.EOF) {
-            println("readBody is")
-            println(readBodyLength)
-            println("contentLength is")
-            println(contentLength)
-            println("break 1")
             break
           }
         }
-        println(bodyString)
-        println("break 2")
         break
       }
     }
@@ -104,10 +98,18 @@ func doServer(conn net.Conn) {
   defer conn.Close()
 }
 
+//ファイル読み込み > Dir読み込み > index.html > リスト化
 func readFileContent(fileName string) string {
   //TODO どでかいファイル入ると多分落ちる。
   fp, err := ioutil.ReadFile("./resources" + fileName)
   if err != nil {
+    exist := isFileOrDirExists("./resources" + fileName)
+    if(exist) {
+      indexFile, err := ioutil.ReadFile("./resources/" + fileName + "index.html")
+      if err == nil {
+        return string(indexFile)
+      }
+    }
     filesList := getFilesList("./resources/" + fileName)
     if(filesList == "") {
       return "Not Found!"
@@ -118,15 +120,13 @@ func readFileContent(fileName string) string {
   return string(body)
 }
 
-// func inputKey() bool {
-//   runtime.Gosched()
-//   var key string
-//   fmt.Scan(&key)
-//   return (key == "q")
-// }
-
 func CountByteLength(target string) int {
   return utf8.RuneCountInString(target)
+}
+
+func isFileOrDirExists(fileName string) bool {
+  _, err := os.Stat(fileName)
+  return err == nil
 }
 
 func getFilesList(dirPath string) string {
@@ -168,11 +168,11 @@ func JsonParser() {
 func SelectContentType(extension string) string {
   //TODO 将来的には画像に関しては先端のバイトコードを見て適切なContentTypeを送信したい。
   switch extension {
-  case "html", "HTML": return "text/html; charset=utf-8;\n"
-  case "png", "PNG": return "image/png;\n"
-  case "jpeg", "JPEG", "jpg", "JPG": return "image/jpeg;\n"
-  // case "txt", "TXT", "text", "TEXT": return "plain/text;\n"
-  default: return ";\n"
+    case "html", "HTML": return "text/html; charset=utf-8;\n"
+    case "png", "PNG": return "image/png;\n"
+    case "jpeg", "JPEG", "jpg", "JPG": return "image/jpeg;\n"
+    // case "txt", "TXT", "text", "TEXT": return "plain/text;\n"
+    default: return ";\n"
   }
 }
 
